@@ -25,17 +25,34 @@ if(NOT _cosmopolitan_add_executable_defined)
         BRIEF_DOCS "Cosmopolitan output"
         FULL_DOCS "Cosmopolitan output"
     )
+    define_property(TARGET
+        PROPERTY COSMOPOLITAN_SUFFIX
+        BRIEF_DOCS "Cosmopolitan suffix"
+        FULL_DOCS "Cosmopolitan suffix"
+    )
 
     function(add_executable TARGET)
         _add_executable(${TARGET} ${ARGN})
-        set(cosmo_prop "$<TARGET_PROPERTY:${TARGET},COSMOPOLITAN_OUTPUT_NAME>")
-        set(cosmo_prop_not_defined "$<STREQUAL:${cosmo_prop},>")
-        set(cosmo_out "$<TARGET_FILE_DIR:${TARGET}>/$<TARGET_FILE_PREFIX:${TARGET}>${cosmo_prop}$<TARGET_FILE_SUFFIX:${TARGET}>")
-        set(normal_out "$<TARGET_FILE:${TARGET}>")
-        set(outfilename "$<IF:${cosmo_prop_not_defined},${normal_out},${cosmo_out}>")
-        add_custom_command(TARGET "${TARGET}" POST_BUILD
-            COMMAND "${CMAKE_OBJCOPY}" -S -O binary "$<TARGET_FILE:${TARGET}>" "${outfilename}"
+        set_propertY(TARGET ${TARGET} PROPERTY SUFFIX ".com.dbg")
+        set_propertY(TARGET ${TARGET} PROPERTY COSMOPOLITAN_SUFFIX ".com")
+        get_property(_target_type TARGET ${TARGET} PROPERTY TYPE)
+        get_property(_target_imported TARGET ${TARGET} PROPERTY IMPORTED)
+        if(_target_type STREQUAL "EXECUTABLE" AND NOT _target_imported)
+            set(cosmo_directory "$<TARGET_FILE_DIR:${TARGET}>")
+            set(cosmo_prefix "$<TARGET_FILE_PREFIX:${TARGET}>")
+            set(cosmo_suffix "$<TARGET_PROPERTY:${TARGET},COSMOPOLITAN_SUFFIX>")
 
-        )
+            set(name_normal_out "$<TARGET_FILE_BASE_NAME:${TARGET}>")
+            set(name_cosmo_out "$<TARGET_PROPERTY:${TARGET},COSMOPOLITAN_OUTPUT_NAME>")
+
+            set(name_cosmo_out_not_defined "$<STREQUAL:${name_cosmo_out},>")
+
+            set(name_out "$<IF:${name_cosmo_out_not_defined},${name_normal_out},${name_cosmo_out}>")
+
+            set(outfilename "${cosmo_directory}/${cosmo_prefix}${name_out}${cosmo_suffix}")
+            add_custom_command(TARGET "${TARGET}" POST_BUILD
+                COMMAND "${CMAKE_OBJCOPY}" -S -O binary "$<TARGET_FILE:${TARGET}>" "${outfilename}"
+            )
+        endif()
     endfunction()
 endif()
