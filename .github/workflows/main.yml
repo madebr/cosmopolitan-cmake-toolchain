@@ -20,29 +20,28 @@ jobs:
         with:
           version: 1.11.1
 
-      - uses: actions/cache/restore@v3
-        id: restore-cache
+      - uses: ./.github/setup
+        name: 'Setup Cosmopolitan with CMake support'
+        id: setup-cosmopolitan
         with:
-          path: ~/cosmopolitan
-          key: cosmopolitan-${{ matrix.platform.version}}
-      - name: Download and extract cosmopolitan
-        if: ${{ !steps.restore-cache.outputs.cache-hit }}
-        run: |
-          filename=cosmopolitan-amalgamation-rel-${{ matrix.platform.version }}.zip
-          wget "https://github.com/jart/cosmopolitan/releases/download/2.2/$filename" -O /tmp/$filename
-          sudo unzip /tmp/$filename -d ~/cosmopolitan
-      - uses: actions/cache/save@v3
-        with:
-          path: ~/cosmopolitan
-          key: cosmopolitan-${{ matrix.platform.version}}
+          version: ${{ matrix.platform.version }}
 
-      - name: Setup Cosmopolitan CMake environment
-        run:
-          echo "COSMOPOLITAN_ROOT=$HOME/cosmopolitan" >>$GITHUB_ENV
       - name: Configure (CMake)
         run: |
           cmake -S test -B test_build -GNinja \
-            -DCMAKE_TOOLCHAIN_FILE=$PWD/cmake/cosmopolitan.cmake
+            -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-cosmopolitan.outputs.cmake-toolchain-file }}
       - name: Build (CMake)
         run: |
           cmake --build test_build --verbose
+      - name: Test existence of .com files
+        run: |
+          rc=0
+          test_existence() {
+            if [ ! -f $1 ]; then
+              echo "$1 DOES not exist!" >/dev/stderr;
+              rc=1
+            fi
+          }
+          test_existence test_build/hello_world.com.dbg
+          test_existence test_build/hello_world.com
+          exit $rc
