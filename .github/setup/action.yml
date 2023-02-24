@@ -59,7 +59,7 @@ runs:
       if: ${{ !steps.restore-cache.outputs.cache-hit }}
       with:
         path: ${{ github.workspace }}/cosmopolitan
-        key: cosmopolitan-${{inputs.mode}}-${{ steps.fetch-cosmopolitan-git.git-hash }}
+        key: cosmopolitan-${{inputs.mode}}-${{ steps.fetch-cosmopolitan-git.outputs.git-hash }}
 
     - name: Configure /opt/cosmo and /opt/cosmos
       shell: bash
