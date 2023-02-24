@@ -9,10 +9,10 @@ jobs:
     strategy:
       matrix:
         platform:
-          - { name: Linux,    os: ubuntu-latest, version: '2.2' }
+          - { name: Linux,    os: ubuntu-latest, commit: 'master' }
 
     runs-on: ${{ matrix.platform.os }}
-    name: CI Cosmopolitan ${{ matrix.platform.version }} (${{ matrix.platform.name }})
+    name: CI Cosmopolitan ${{ matrix.platform.commit }} (${{ matrix.platform.name }})
     steps:
       - uses: actions/checkout@v3
       - name: Setup Ninja
@@ -24,7 +24,7 @@ jobs:
         name: 'Setup Cosmopolitan with CMake support'
         id: setup-cosmopolitan
         with:
-          version: ${{ matrix.platform.version }}
+          commit: ${{ matrix.platform.commit }}
 
       - name: Configure (CMake)
         run: |
@@ -42,6 +42,5 @@ jobs:
               rc=1
             fi
           }
-          test_existence test_build/hello_world.com.dbg
           test_existence test_build/hello_world.com
           exit $rc

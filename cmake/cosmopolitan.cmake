@@ -3,20 +3,21 @@
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/Modules")
 set(CMAKE_SYSTEM_NAME "Cosmopolitan")
 
-find_program(CMAKE_C_COMPILER NAMES gcc)
+set(COSMO_ROOT "$ENV{COSMO}")
+
+find_program(CMAKE_C_COMPILER NAMES "${COSMO_ROOT}/tool/scripts/cosmocc")
+find_program(CMAKE_CXX_COMPILER NAMES "${COSMO_ROOT}/tool/scripts/cosmoc++")
 find_program(CMAKE_OBJCOPY NAMES objcopy)
 
-set(COSMOPOLITAN_ROOT "$ENV{COSMOPOLITAN_ROOT}")
-
-if(NOT COSMOPOLITAN_ROOT)
-    message(FATAL_ERROR "COSMOPOLITAN_ROOT not set")
+if(NOT COSMO_ROOT)
+    message(FATAL_ERROR "COSMO environment variable not set")
 endif()
 
-set(CMAKE_C_FLAGS_INIT "-static -fno-pie -no-pie -nostdlib -nostdinc -isystem \"${COSMOPOLITAN_ROOT}\" -include \"${COSMOPOLITAN_ROOT}/cosmopolitan.h\"")
-string(APPEND CMAKE_C_FLAGS_INIT " -fno-omit-frame-pointer -pg -mnop-mcount -mno-tls-direct-seg-refs")
+#set(CMAKE_C_FLAGS_INIT "-static -fno-pie -no-pie -nostdlib -nostdinc -isystem \"${COSMO_ROOT}\" -include \"${COSMO_ROOT}/cosmopolitan.h\"")
+#string(APPEND CMAKE_C_FLAGS_INIT " -fno-omit-frame-pointer -pg -mnop-mcount -mno-tls-direct-seg-refs")
 
-set(CMAKE_EXE_LINKER_FLAGS_INIT "-Wl,--gc-sections -fuse-ld=bfd -Wl,--gc-sections")
-string(APPEND CMAKE_EXE_LINKER_FLAGS_INIT " -Wl,-T,\"${COSMOPOLITAN_ROOT}/ape.lds\" \"${COSMOPOLITAN_ROOT}/crt.o\" \"${COSMOPOLITAN_ROOT}/ape-no-modify-self.o\"")
+#set(CMAKE_EXE_LINKER_FLAGS_INIT "-Wl,--gc-sections -fuse-ld=bfd -Wl,--gc-sections")
+#string(APPEND CMAKE_EXE_LINKER_FLAGS_INIT " -Wl,-T,\"${COSMO_ROOTCOSMO_ROOT}/ape.lds\" \"${COSMO_ROOT}/crt.o\" \"${COSMO_ROOT}/ape-no-modify-self.o\"")
 
 if(NOT _cosmopolitan_add_executable_defined)
     set(_cosmopolitan_add_executable_defined 1)
@@ -31,10 +32,12 @@ if(NOT _cosmopolitan_add_executable_defined)
         FULL_DOCS "Cosmopolitan suffix"
     )
 
+    set(COSMOPOLITAN_SUFFIX_DEFAULT ".com")
+
     function(add_executable TARGET)
         _add_executable(${TARGET} ${ARGN})
-        set_propertY(TARGET ${TARGET} PROPERTY SUFFIX ".com.dbg")
-        set_propertY(TARGET ${TARGET} PROPERTY COSMOPOLITAN_SUFFIX ".com")
+        set_propertY(TARGET ${TARGET} PROPERTY SUFFIX ".com")
+        set_propertY(TARGET ${TARGET} PROPERTY COSMOPOLITAN_SUFFIX "${COSMOPOLITAN_SUFFIX_DEFAULT}")
         get_property(_target_type TARGET ${TARGET} PROPERTY TYPE)
         get_property(_target_imported TARGET ${TARGET} PROPERTY IMPORTED)
         if(_target_type STREQUAL "EXECUTABLE" AND NOT _target_imported)

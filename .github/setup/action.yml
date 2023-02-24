@@ -1,10 +1,13 @@
 name: 'Setup Cosmopolitan-cmake-toolchain'
 description: 'Setup Cosmopolitan with CMake support'
 inputs:
-  version:
-    description: 'Cosmopolitan version'
+  commit:
+    description: 'Cosmopolitan commit'
     required: true
-    default: '2.2'
+    default: 'master'
+  mode:
+    description: 'Cosmopolitan mode'
+    default: ""
 outputs:
   cosmopolitan-root:
     description: "Root directory of Cosmopolitan"
@@ -12,30 +15,64 @@ outputs:
   cmake-toolchain-file:
     description: "Cosmopolitan CMake toolchain file"
     value: ${{ steps.set-outputs.outputs.cmake-toolchain-file }}
+  git-hash:
+    description: "Cosmopolitan git hash"
+    value: ${{ steps.fetch-cosmopolitan-git.outputs.git-hash }}
 runs:
   using: "composite"
   steps:
+    - name: Fetch Cosmopolitan git
+      id: fetch-cosmopolitan-git
+      shell: bash
+      run: |
+        git clone https://github.com/jart/cosmopolitan.git \
+          --branch ${{ inputs.commit }} \
+          --depth 1 \
+          ${{ github.workspace }}/cosmopolitan-src
+        git_hash=$(git -C ${{ github.workspace }}/cosmopolitan-src rev-parse HEAD)
+        echo "git-hash=${git_hash}" >>$GITHUB_OUTPUT
+    - name: Register APE with Linux kernel
+      if: ${{ runner.os == 'Linux' }}
+      shell: bash
+      run: |
+        sudo cp ${{ github.workspace }}/cosmopolitan-src/build/bootstrap/ape.elf /usr/bin/ape
+        sudo sh -c "echo ':APE:M::MZqFpD::/usr/bin/ape:' >/proc/sys/fs/binfmt_misc/register"
     - uses: actions/cache/restore@v3
       id: restore-cache
       with:
-        path: ${{ github.action_path }}/../../cosmopolitan
-        key: cosmopolitan-${{ matrix.platform.version}}
-    - name: Download and extract cosmopolitan
+        path: ${{ github.workspace }}/cosmopolitan
+        key: cosmopolitan-${{inputs.mode}}-${{ steps.fetch-cosmopolitan-git.outputs.git-hash }}
+    - name: Build Cosmopolitan
       if: ${{ !steps.restore-cache.outputs.cache-hit }}
       shell: bash
       run: |
-        filename=cosmopolitan-amalgamation-rel-${{ inputs.version }}.zip
-        wget "https://github.com/jart/cosmopolitan/releases/download/${{ inputs.version }}/$filename" -O /tmp/$filename
-        sudo unzip /tmp/$filename -d ${{ github.action_path }}/../../cosmopolitan
+        mv ${{ github.workspace }}/cosmopolitan-src ${{ github.workspace }}/cosmopolitan
+        cd ${{ github.workspace }}/cosmopolitan
+        make -j2 MODE=${{ inputs.mode }}
+
+    - name: Remove directory
+      shell: bash
+      run: |
+        rm -rf ${{ github.workspace }}/cosmopolitan-src
+
     - uses: actions/cache/save@v3
       if: ${{ !steps.restore-cache.outputs.cache-hit }}
       with:
-        path: ${{ github.action_path }}/../../cosmopolitan
-        key: cosmopolitan-${{ matrix.platform.version}}
-    - name: Set output
+        path: ${{ github.workspace }}/cosmopolitan
+        key: cosmopolitan-${{inputs.mode}}-${{ steps.fetch-cosmopolitan-git.git-hash }}
+
+    - name: Configure /opt/cosmo and /opt/cosmos
+      shell: bash
+      run: |
+        sudo mv ${{ github.workspace }}/cosmopolitan /opt/cosmo
+        sudo mkdir /opt/cosmos
+        sudo chmod -R 1777 /opt
+
+    - name: Configure outputs + environment
       id: set-outputs
       shell: bash
       run: |
-        echo "COSMOPOLITAN_ROOT=${{ github.action_path }}/../../cosmopolitan" >>$GITHUB_ENV
-        echo "cosmopolitan-root=${{ github.action_path }}/../../cosmopolitan" >>$GITHUB_OUTPUT
+        echo "COSMO=/opt/cosmo" >>$GITHUB_ENV
+        echo "COSMOS=/opt/cosmos" >>$GITHUB_ENV
+        echo "cosmopolitan-root=${{ github.workspace }}/cosmopolitan" >>$GITHUB_OUTPUT
         echo "cmake-toolchain-file=${{ github.action_path }}/../../cmake/cosmopolitan.cmake" >>$GITHUB_OUTPUT
