@@ -22,40 +22,30 @@ endif()
 if(NOT _cosmopolitan_add_executable_defined)
     set(_cosmopolitan_add_executable_defined 1)
     define_property(TARGET
-        PROPERTY COSMOPOLITAN_OUTPUT_NAME
-        BRIEF_DOCS "Cosmopolitan output"
-        FULL_DOCS "Cosmopolitan output"
-    )
-    define_property(TARGET
-        PROPERTY COSMOPOLITAN_SUFFIX
+        PROPERTY COSMOPOLITAN_DEBUG_SUFFIX
         BRIEF_DOCS "Cosmopolitan suffix"
         FULL_DOCS "Cosmopolitan suffix"
     )
 
-    set(COSMOPOLITAN_SUFFIX_DEFAULT ".com")
+    set(COSMOPOLITAN_DEBUG_SUFFIX_DEFAULT ".dbg")
 
     function(add_executable TARGET)
         _add_executable(${TARGET} ${ARGN})
         set_propertY(TARGET ${TARGET} PROPERTY SUFFIX ".com")
-        set_propertY(TARGET ${TARGET} PROPERTY COSMOPOLITAN_SUFFIX "${COSMOPOLITAN_SUFFIX_DEFAULT}")
+        set_propertY(TARGET ${TARGET} PROPERTY COSMOPOLITAN_DEBUG_SUFFIX "${COSMOPOLITAN_DEBUG_SUFFIX_DEFAULT}")
         get_property(_target_type TARGET ${TARGET} PROPERTY TYPE)
         get_property(_target_imported TARGET ${TARGET} PROPERTY IMPORTED)
         if(_target_type STREQUAL "EXECUTABLE" AND NOT _target_imported)
             set(cosmo_directory "$<TARGET_FILE_DIR:${TARGET}>")
-            set(cosmo_prefix "$<TARGET_FILE_PREFIX:${TARGET}>")
-            set(cosmo_suffix "$<TARGET_PROPERTY:${TARGET},COSMOPOLITAN_SUFFIX>")
-
-            set(name_normal_out "$<TARGET_FILE_BASE_NAME:${TARGET}>")
-            set(name_cosmo_out "$<TARGET_PROPERTY:${TARGET},COSMOPOLITAN_OUTPUT_NAME>")
-
-            set(name_cosmo_out_not_defined "$<STREQUAL:${name_cosmo_out},>")
-
-            set(name_out "$<IF:${name_cosmo_out_not_defined},${name_normal_out},${name_cosmo_out}>")
+            set(cosmo_nodebug_file_name "$<TARGET_FILE_NAME:${TARGET}>")
+            set(cosmo_debug_file_name "${cosmo_nodebug_file_name}$<TARGET_PROPERTY:${TARGET},COSMOPOLITAN_DEBUG_SUFFIX>")
 
             set(outfilename "${cosmo_directory}/${cosmo_prefix}${name_out}${cosmo_suffix}")
             add_custom_command(TARGET "${TARGET}" POST_BUILD
-                COMMAND "${CMAKE_OBJCOPY}" -S -O binary "$<TARGET_FILE:${TARGET}>" "${outfilename}"
+                COMMAND "${CMAKE_COMMAND}" ARGS -E rename "${cosmo_nodebug_file_name}" "${cosmo_debug_file_name}"
+                COMMAND "${CMAKE_OBJCOPY}" ARGS -S -O binary "${cosmo_debug_file_name}" "${cosmo_nodebug_file_name}"
             )
+            set_property(TARGET ${TARGET} APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${cosmo_debug_file_name}")
         endif()
     endfunction()
 endif()
